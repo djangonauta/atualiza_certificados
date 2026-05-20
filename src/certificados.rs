@@ -53,7 +53,7 @@ impl Certificado {
     }
 
     /// # Errors
-    /// `CertificadoError::NomeInvalidoArquivo` ao obter steam do arquivo origem.
+    /// `CertificadoError::NomeInvalidoArquivo` ao obter stem do arquivo origem.
     pub fn caminho_saida(origem: &Path) -> Result<PathBuf> {
         let stem = origem
             .file_stem()
@@ -64,19 +64,19 @@ impl Certificado {
     }
 
     /// # Errors
-    /// `CertificadoError::NomeInvalidoArquivo` ao obter steam do arquivo origem.
-    pub fn salvar_hash_512(caminho: &Path) -> Result<()> {
-        let bytes = fs::read(caminho).map_err(|source| CertificadoError::LeituraArquivo {
-            source,
-            caminho: caminho.to_path_buf(),
-        })?;
+    /// `CertificadoError::LeituraArquivo` ao ler o arquivo json.
+    /// `CertificadoError::CertificadoError::EscritaArquivo` ao escrever o hash do arquivo do certificado .zip.
+    pub fn salvar_hash_512(caminho: &Path, bytes: &[u8]) -> Result<()> {
         let hash = Sha512::digest(bytes);
 
-        let mut caminho = PathBuf::from(caminho);
-        caminho.set_extension("zip.hash");
-        fs::write(&caminho, hex::encode(hash)).map_err(|source| CertificadoError::EscritaArquivo {
-            source,
-            caminho: caminho.clone(),
+        let mut caminho_os = caminho.as_os_str().to_owned();
+        caminho_os.push(".hash");
+        let caminho = PathBuf::from(caminho_os);
+        fs::write(&caminho, hex::encode(hash)).map_err(|source| {
+            CertificadoError::EscritaArquivo {
+                source,
+                caminho: caminho.clone(),
+            }
         })?;
         Ok(())
     }
@@ -85,18 +85,19 @@ impl Certificado {
     /// `CertificadoError::LeituraArquivo` ao ler o arquivo json
     /// `CertificadoError::DeserializacaoJson` ao deserializar o conteúdo do arquivo via serde.
     /// `Certificado::DecodificacaoBase64` ao decodificar o conteúdo base64 do certificado.
-    /// `CertificadoError::NomeInvalidoArquivo` ao obter steam do arquivo origem.
+    /// `CertificadoError::NomeInvalidoArquivo` ao obter stem do arquivo origem.
+    /// `CertificadoError::CertificadoError::EscritaArquivo` ao escrever o hash do arquivo do certificado .zip.
     pub fn processar(caminho: &Path) -> Result<PathBuf> {
         let certificado = Self::deserializar(caminho)?;
         let bytes = certificado.decodificar()?;
         let caminho_saida = Self::caminho_saida(caminho)?;
 
-        fs::write(&caminho_saida, bytes).map_err(|source| CertificadoError::EscritaArquivo {
+        fs::write(&caminho_saida, &bytes).map_err(|source| CertificadoError::EscritaArquivo {
             source,
             caminho: caminho_saida.clone(),
         })?;
 
-        Self::salvar_hash_512(&caminho_saida)?;
+        Self::salvar_hash_512(&caminho_saida, &bytes)?;
         Ok(caminho_saida)
     }
 }

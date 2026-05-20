@@ -43,9 +43,11 @@ fn main() -> Result<()> {
         .for_each(|arquivo| {
             log::info!("Processando arquivo \"{}\"", arquivo.display());
             match Certificado::processar(&arquivo) {
-                Ok(saida) => log::info!("Arquivos \"{0}\" e \"{0}.hash\" gerados com sucesso.", saida.display()),
-                Err(erro) =>
-                eprintln!(
+                Ok(saida) => log::info!(
+                    "Arquivos \"{0}\" e \"{0}.hash\" gerados com sucesso.",
+                    saida.display()
+                ),
+                Err(erro) => eprintln!(
                     "Erro ao processar arquivo \"{}\": {erro:#}",
                     arquivo.display()
                 ),
