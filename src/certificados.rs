@@ -30,7 +30,7 @@ pub struct CertificadoResult {
 
 impl Certificado {
     /// # Errors
-    /// `CertificadoError::LeituraArquivo` ao ler o arquivo json
+    /// `CertificadoError::LeituraArquivo` ao ler o arquivo json.
     /// `CertificadoError::DeserializacaoJson` ao deserializar o conteúdo do arquivo via serde.
     pub fn deserializar(caminho: &Path) -> Result<Self> {
         let conteudo =
@@ -82,22 +82,29 @@ impl Certificado {
     }
 
     /// # Errors
-    /// `CertificadoError::LeituraArquivo` ao ler o arquivo json
+    /// `CertificadoError::LeituraArquivo` ao ler o arquivo json.
     /// `CertificadoError::DeserializacaoJson` ao deserializar o conteúdo do arquivo via serde.
     /// `Certificado::DecodificacaoBase64` ao decodificar o conteúdo base64 do certificado.
     /// `CertificadoError::NomeInvalidoArquivo` ao obter stem do arquivo origem.
     /// `CertificadoError::CertificadoError::EscritaArquivo` ao escrever o hash do arquivo do certificado .zip.
-    pub fn processar(caminho: &Path) -> Result<PathBuf> {
+    pub fn processar(caminho: &Path, diretorio_saida: &Path) -> Result<PathBuf> {
         let certificado = Self::deserializar(caminho)?;
         let bytes = certificado.decodificar()?;
         let caminho_saida = Self::caminho_saida(caminho)?;
+        let saida = diretorio_saida.join(&caminho_saida);
 
-        fs::write(&caminho_saida, &bytes).map_err(|source| CertificadoError::EscritaArquivo {
+        if let Some(pai) = saida.parent() {
+            fs::create_dir_all(pai).map_err(|source| CertificadoError::EscritaArquivo {
+                source,
+                caminho: pai.to_path_buf(),
+            })?;
+        }
+        fs::write(&saida, &bytes).map_err(|source| CertificadoError::EscritaArquivo {
             source,
-            caminho: caminho_saida.clone(),
+            caminho: saida.clone(),
         })?;
 
-        Self::salvar_hash_512(&caminho_saida, &bytes)?;
-        Ok(caminho_saida)
+        Self::salvar_hash_512(&saida, &bytes)?;
+        Ok(saida)
     }
 }

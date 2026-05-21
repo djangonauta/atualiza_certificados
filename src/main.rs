@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use env_logger::Env;
 use std::fs;
+use std::path::PathBuf;
 
 use atualiza_certificados::certificados::Certificado;
 use clap::Parser;
@@ -8,7 +9,8 @@ use clap::Parser;
 #[derive(Debug, Parser)]
 #[command(version, about = "Atualizador de cerfificados")]
 struct Cli {
-    diretorio_entrada: String,
+    diretorio_entrada: PathBuf,
+    diretorio_saida: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
@@ -17,11 +19,19 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     log::info!(
         "Obtendo arquivos de certificados a partir do diretório \"{}\":",
-        &cli.diretorio_entrada
+        cli.diretorio_entrada.display()
     );
+    let diretorio_saida = cli
+        .diretorio_saida
+        .unwrap_or_else(|| PathBuf::from("gerados"));
     println!();
-    let read_dir = fs::read_dir(&cli.diretorio_entrada)
-        .with_context(|| format!("Erro ao ler diretório \"{}\"", &cli.diretorio_entrada))?;
+
+    let read_dir = fs::read_dir(&cli.diretorio_entrada).with_context(|| {
+        format!(
+            "Erro ao ler diretório \"{}\"",
+            cli.diretorio_entrada.display()
+        )
+    })?;
 
     read_dir
         .filter_map(|e| {
@@ -42,7 +52,7 @@ fn main() -> Result<()> {
         })
         .for_each(|arquivo| {
             log::info!("Processando arquivo \"{}\"", arquivo.display());
-            match Certificado::processar(&arquivo) {
+            match Certificado::processar(&arquivo, &diretorio_saida) {
                 Ok(saida) => log::info!(
                     "Arquivos \"{0}\" e \"{0}.hash\" gerados com sucesso.",
                     saida.display()
